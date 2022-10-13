@@ -5,44 +5,54 @@ using UnityEngine;
 [RequireComponent(typeof(Enemy))]
 public class EnemyMover : MonoBehaviour
 {
-    [SerializeField] List<Waypoint> path = new List<Waypoint>();
     [SerializeField] [Range(0f, 5f)] float speed = 1f;
-    Enemy enemy;
 
-    private void Awake()
-    {
-        FindPath();
-    }
+    List<Node> path = new List<Node>();
+
+    Enemy enemy;
+    GridManager gridManager;
+    Pathfinder pathFinder;
+
     private void OnEnable()
     {
-        transform.position = path[0].transform.position;        //set the enemy to spawn on the first waypoint
-        StartCoroutine(FollowPath());        //use StartCoroutine to call a Coroutine function
+        ReturnToStart();
+        RecalculatePath(true);
     }
-    private void Start()
+    private void Awake()
     {
         enemy = GetComponent<Enemy>();
+        gridManager = FindObjectOfType<GridManager>();
+        pathFinder = FindObjectOfType<Pathfinder>();
     }
-    void FindPath()
+    void RecalculatePath(bool resetPath)
     {
-        path.Clear();       //empty the path list so it starts from a blank state
-
-        GameObject parent = GameObject.FindGameObjectWithTag("Path");       //find the empty game object Path that contains all waypoints in the hierarchy
-
-        foreach(Transform child in parent.transform)        //transform component supports enumerators so you can loop through all the children using foreach loop
+        Vector2Int coordinates = new Vector2Int();
+        
+        if (resetPath)
         {
-            if(child.GetComponent<Waypoint>() != null)
-            {
-                path.Add(child.GetComponent<Waypoint>());
-            }
+            coordinates = pathFinder.StartCoordinates;
         }
+        else
+        {
+            coordinates = gridManager.GetCoordinatesFromPosition(transform.position);
+        }
+
+        StopAllCoroutines();
+        path.Clear();       //empty the path list so it starts from a blank state
+        path = pathFinder.GetNewPath();
+        StartCoroutine(FollowPath());        //use StartCoroutine to call a Coroutine function
+    }
+    void ReturnToStart()
+    {
+        transform.position = gridManager.GetPositionFromCoordinates(pathFinder.StartCoordinates);
     }
 
     IEnumerator FollowPath()     //return type IEnumerator signifies that this function is a Coroutine
     {
-        foreach (var waypoint in path)      //loops through each element in the list
+        for (int i = 1; i < path.Count; i++)      //loops through each element in the list
         {
             Vector3 startPos = transform.position;
-            Vector3 endPos = waypoint.transform.position;
+            Vector3 endPos = gridManager.GetPositionFromCoordinates(path[i].coordinates);
             float travelPercent = 0f;
 
             transform.LookAt(endPos);       //make enemy faces the position it's heading to

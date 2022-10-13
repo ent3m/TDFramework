@@ -7,19 +7,22 @@ using TMPro;
 [RequireComponent(typeof(TextMeshPro))]
 public class CoordinateLabeler : MonoBehaviour
 {
-    [SerializeField] Color defaultColor = Color.blue;
-    [SerializeField] Color blockedColor = Color.red;
+    [SerializeField] Color defaultColor = Color.white;
+    [SerializeField] Color blockedColor = Color.gray;
+    [SerializeField] Color exploredColor = Color.yellow;
+    [SerializeField] Color pathColor = new Color(1f, 0.5f, 0f);     //pass in RGB values to construct color Orange
 
     TextMeshPro label;
     Vector2Int coordinates;
-    Waypoint waypoint;
+    GridManager gridManager;
 
     void Awake()
     {
         label = GetComponent<TextMeshPro>();
         label.enabled = false;
 
-        waypoint = GetComponentInParent<Waypoint>();
+        gridManager = FindObjectOfType<GridManager>();
+
         DisplayCoordinates();       //make the coordinates shown during play mode. no need to update since tile objects aren't moved around in play mode
     }
     void Update()
@@ -42,19 +45,41 @@ public class CoordinateLabeler : MonoBehaviour
     }
     void SetLabelColor()
     {
-        if (waypoint.IsPlaceable)
+        if (gridManager == null)
+        { 
+            return;
+        }
+
+        Node node = gridManager.GetNode(coordinates);
+
+        if (node == null)
         {
-            label.color = defaultColor;
+            return;
+        }
+
+        if (!node.isWalkable)
+        {
+            label.color = blockedColor;
+        }
+        else if (node.isPath)
+        {
+            label.color = pathColor;
+        }
+        else if (node.isExplored)
+        {
+            label.color = exploredColor;
         }
         else
         {
-            label.color = blockedColor;
+            label.color = defaultColor;
         }
     }
     void DisplayCoordinates()
     {
-        coordinates.x = Mathf.RoundToInt(transform.parent.position.x / UnityEditor.EditorSnapSettings.move.x);      //use the position of the parent object (tile) and divide it by grid snap value
-        coordinates.y = Mathf.RoundToInt(transform.parent.position.z / UnityEditor.EditorSnapSettings.move.z);
+        if(gridManager == null) { return; }
+
+        coordinates.x = Mathf.RoundToInt(transform.parent.position.x / gridManager.UnityGridSize);      //use the position of the parent object (tile) and divide it by grid snap value
+        coordinates.y = Mathf.RoundToInt(transform.parent.position.z / gridManager.UnityGridSize);
 
         label.text = coordinates.x + "," + coordinates.y;
     }
